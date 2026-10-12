@@ -4,7 +4,7 @@ export default function App() {
     const [reply, setReply] = useState('');
 
     async function ping() {
-        const result = await window.api.ping('Hello from React');
+        const result = await window.api.ping('hello from React');
         setReply(result);
     }
 
