@@ -1,135 +1,166 @@
-export const DEFAULT_FOLDER_ID = "default";
+import fs from "node:fs";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+import { AppError, friendlyError } from "../security/errors.js";
+import { safeJoin, extOf } from "../security/paths.js";
 
-export const migrations = [
-  {
-    version: 1,
-    name: "notes, folders, tags, attachments, settings",
-    up(db) {
-      db.exec(`
-        CREATE TABLE folders (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          is_default INTEGER NOT NULL DEFAULT 0,
-          created_at INTEGER NOT NULL,
-          updated_at INTEGER NOT NULL
-        );
-        CREATE UNIQUE INDEX idx_folders_name ON folders(name COLLATE NOCASE);
+export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
-        CREATE TABLE notes (
-          id TEXT PRIMARY KEY,
-          folder_id TEXT NOT NULL REFERENCES folders(id) ON DELETE RESTRICT,
-          title TEXT NOT NULL DEFAULT '',
-          content_html TEXT NOT NULL DEFAULT '',
-          content_text TEXT NOT NULL DEFAULT '',
-          pinned INTEGER NOT NULL DEFAULT 0,
-          favorite INTEGER NOT NULL DEFAULT 0,
-          urgent INTEGER NOT NULL DEFAULT 0,
-          created_at INTEGER NOT NULL,
-          updated_at INTEGER NOT NULL
-        );
-        CREATE INDEX idx_notes_folder ON notes(folder_id);
-        CREATE INDEX idx_notes_updated ON notes(updated_at);
+// Only these extensions can be attached. Executables and scripts are not here.
+export const ALLOWED_TYPES = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  bmp: "image/bmp",
+  pdf: "application/pdf",
+  txt: "text/plain",
+  md: "text/markdown",
+  csv: "text/csv",
+  json: "application/json",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  odt: "application/vnd.oasis.opendocument.text",
+  zip: "application/zip",
+};
 
-        CREATE TABLE tags (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL UNIQUE COLLATE NOCASE
-        );
-        CREATE TABLE note_tags (
-          note_id TEXT NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
-          tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-          PRIMARY KEY (note_id, tag_id)
-        );
-        CREATE INDEX idx_note_tags_tag ON note_tags(tag_id);
+// The first bytes of a real file identify its format ("magic numbers").
+const MAGIC = {
+  png: (b) =>
+    b.length > 8 && b[0] === 0x89 && b.toString("latin1", 1, 4) === "PNG",
+  jpg: (b) => b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
+  jpeg: (b) => MAGIC.jpg(b),
+  gif: (b) => b.toString("latin1", 0, 4) === "GIF8",
+  webp: (b) =>
+    b.length > 12 &&
+    b.toString("latin1", 0, 4) === "RIFF" &&
+    b.toString("latin1", 8, 12) === "WEBP",
+  bmp: (b) => b.toString("latin1", 0, 2) === "BM",
+  pdf: (b) => b.toString("latin1", 0, 5) === "%PDF-",
+  zip: (b) => b.toString("latin1", 0, 2) === "PK",
+  docx: (b) => MAGIC.zip(b),
+  xlsx: (b) => MAGIC.zip(b),
+  pptx: (b) => MAGIC.zip(b),
+  odt: (b) => MAGIC.zip(b),
+};
 
-        CREATE TABLE attachments (
-          id TEXT PRIMARY KEY,
-          note_id TEXT NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
-          original_name TEXT NOT NULL,
-          stored_name TEXT NOT NULL,
-          mime TEXT NOT NULL,
-          size INTEGER NOT NULL,
-          created_at INTEGER NOT NULL
-        );
-        CREATE INDEX idx_attachments_note ON attachments(note_id);
+const TEXT_TYPES = new Set(["txt", "md", "csv", "json"]);
 
-        CREATE TABLE settings (
-          key TEXT PRIMARY KEY,
-          value TEXT NOT NULL
-        );
-      `);
-      const t = Date.now();
-      db.prepare(
-        "INSERT INTO folders (id, name, is_default, created_at, updated_at) VALUES (?, ?, 1, ?, ?)",
-      ).run(DEFAULT_FOLDER_ID, "Notes", t, t);
-    },
-  },
-  {
-    version: 2,
-    name: "reminders and timers",
-    up(db) {
-      db.exec(`
-        CREATE TABLE reminders (
-          id TEXT PRIMARY KEY,
-          note_id TEXT REFERENCES notes(id) ON DELETE SET NULL,
-          title TEXT NOT NULL,
-          due_at INTEGER NOT NULL,
-          status TEXT NOT NULL DEFAULT 'pending'
-            CHECK (status IN ('pending','fired','missed','dismissed','cancelled')),
-          created_at INTEGER NOT NULL,
-          fired_at INTEGER
-        );
-        CREATE INDEX idx_reminders_due ON reminders(status, due_at);
+export function sniffOk(ext, head) {
+  if (MAGIC[ext]) return MAGIC[ext](head);
+  if (TEXT_TYPES.has(ext)) return !head.includes(0); // text files contain no NUL bytes
+  return false;
+}
 
-        CREATE TABLE timers (
-          id TEXT PRIMARY KEY,
-          note_id TEXT REFERENCES notes(id) ON DELETE SET NULL,
-          label TEXT NOT NULL,
-          duration_ms INTEGER NOT NULL,
-          remaining_ms INTEGER NOT NULL,
-          state TEXT NOT NULL CHECK (state IN ('running','paused','done','cancelled')),
-          ends_at INTEGER,
-          created_at INTEGER NOT NULL,
-          updated_at INTEGER NOT NULL
-        );
-      `);
-    },
-  },
-  {
-    version: 3,
-    name: "drawing boards",
-    up(db) {
-      db.exec(`
-        CREATE TABLE boards (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          data_json TEXT NOT NULL DEFAULT '{"version":1,"objects":[]}',
-          created_at INTEGER NOT NULL,
-          updated_at INTEGER NOT NULL
-        );
-      `);
-    },
-  },
-];
+export function mimeForExt(ext) {
+  return ALLOWED_TYPES[ext] ?? null;
+}
 
-export const LATEST_VERSION = migrations[migrations.length - 1].version;
-
-// Apply all pending migrations inside one transaction each.
-// Returns the list of versions that were applied.
-export function migrate(db) {
-  const current = db.pragma("user_version", { simple: true });
-  if (current > LATEST_VERSION) {
-    throw new Error(
-      `Database version ${current} is newer than this app supports (${LATEST_VERSION}). Update the app.`,
+// Validate a file chosen by the user in the native dialog.
+export async function validateFile(filePath) {
+  let st;
+  try {
+    st = await fs.promises.stat(filePath);
+  } catch (err) {
+    throw friendlyError(err);
+  }
+  if (!st.isFile())
+    throw new AppError("EINVALID", "Only regular files can be attached.");
+  if (st.size === 0) throw new AppError("EINVALID", "The file is empty.");
+  if (st.size > MAX_ATTACHMENT_BYTES) {
+    throw new AppError(
+      "ETOOBIG",
+      `The file is larger than ${MAX_ATTACHMENT_BYTES / 1024 / 1024} MB.`,
     );
   }
-  const applied = [];
-  for (const m of migrations) {
-    if (m.version <= current) continue;
-    db.transaction(() => {
-      m.up(db);
-      db.pragma(`user_version = ${m.version}`);
-    })();
-    applied.push(m.version);
+  const ext = extOf(filePath);
+  const mime = mimeForExt(ext);
+  if (!mime)
+    throw new AppError(
+      "ETYPE",
+      `".${ext || "?"}" files are not supported as attachments.`,
+    );
+  const fh = await fs.promises.open(filePath, "r");
+  try {
+    const head = Buffer.alloc(4096);
+    const { bytesRead } = await fh.read(head, 0, 4096, 0);
+    if (!sniffOk(ext, head.subarray(0, bytesRead))) {
+      throw new AppError(
+        "ETYPE",
+        `The content does not look like a real .${ext} file.`,
+      );
+    }
+  } finally {
+    await fh.close();
   }
-  return applied;
+  return { ext, mime, size: st.size };
+}
+
+// Copy chosen files into the attachments directory and record them.
+// Returns { added, failed }. One bad file never blocks the others.
+export async function addFiles({ repo, attachmentsDir, noteId, paths }) {
+  repo.getNote(noteId); // throws ENOTFOUND for unknown notes
+  await fs.promises.mkdir(attachmentsDir, { recursive: true });
+  const added = [];
+  const failed = [];
+  for (const src of paths) {
+    const name = path.basename(src);
+    try {
+      const { ext, mime, size } = await validateFile(src);
+      const storedName = `${randomUUID()}.${ext}`;
+      const dest = safeJoin(attachmentsDir, storedName);
+      await fs.promises.copyFile(src, dest, fs.constants.COPYFILE_EXCL);
+      try {
+        const id = repo.addAttachment({
+          noteId,
+          originalName: name.slice(0, 200),
+          storedName,
+          mime,
+          size,
+        });
+        added.push(id);
+      } catch (err) {
+        await fs.promises.rm(dest, { force: true });
+        throw err;
+      }
+    } catch (err) {
+      failed.push({
+        name,
+        reason: friendlyError(err, "Could not attach this file.").message,
+      });
+    }
+  }
+  return { added, failed };
+}
+
+export async function removeStoredFiles(attachmentsDir, storedNames) {
+  for (const n of storedNames) {
+    try {
+      await fs.promises.rm(safeJoin(attachmentsDir, n), { force: true });
+    } catch {
+      /* best effort */
+    }
+  }
+}
+
+// Absolute path of an attachment, or throws. The id comes from the renderer,
+// the path never does.
+export function resolveAttachmentPath(repo, attachmentsDir, id) {
+  const row = repo.getAttachmentRow(id);
+  const full = safeJoin(attachmentsDir, row.stored_name);
+  if (!fs.existsSync(full))
+    throw new AppError("EMISSING", "The attachment file is missing from disk.");
+  return { full, row };
+}
+
+export function withMissingFlags(repo, attachmentsDir, noteId) {
+  return repo.listAttachments(noteId).map((a) => {
+    const row = repo.getAttachmentRow(a.id);
+    return {
+      ...a,
+      missing: !fs.existsSync(safeJoin(attachmentsDir, row.stored_name)),
+    };
+  });
 }
