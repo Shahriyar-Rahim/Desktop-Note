@@ -6,11 +6,11 @@ export class AppError extends Error {
     }
 }
 
-export class validateError extends AppError {
-    constructor(message) {
-        super('EVALIDATION', message);
-        this.name = "ValidationError";
-    }
+export class ValidationError extends AppError {
+  constructor(message) {
+    super("EVALIDATION", message);
+    this.name = "ValidationError";
+  }
 }
 
 export function friendlyError(err, fallback = 'Something went wrong') {
