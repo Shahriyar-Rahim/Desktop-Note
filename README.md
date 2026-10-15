@@ -1,4 +1,4 @@
-![Desktop Note icon](assets/icon.svg)
+![Desktop Note icon](public/icon.png)
 
 # Desktop-Note
 
