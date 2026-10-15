@@ -17,6 +17,7 @@ body {
   margin: 0;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  user-select: none;
 }
 
 /* Visible keyboard focus everywhere. */
