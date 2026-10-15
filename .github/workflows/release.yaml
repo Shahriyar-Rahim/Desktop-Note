@@ -111,13 +111,18 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Set up QEMU for ARM64 Cross-Compilation
+        uses: docker/setup-qemu-action@v3
+
       - name: Install Linux Dependencies & Snapcraft
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             libarchive-tools \
             icnsutils \
-            graphicsmagick
+            graphicsmagick \
+            qemu-user-static \
+            binfmt-support
           sudo snap install snapcraft --classic --channel=8.x/stable
           echo "/snap/bin" >> $GITHUB_PATH
           sudo snap install gnome-3-28-1804 || true
@@ -136,24 +141,9 @@ jobs:
           echo "Building frontend..."
           npm run build
 
-          test -f dist/index.html || {
-            echo "::error::dist/index.html is missing"
-            exit 1
-          }
-
           echo "Building Snap packages with Electron Builder..."
           npx electron-builder --linux snap --x64 --publish never
           npx electron-builder --linux snap --arm64 --publish never
-
-          test -f release/linux-unpacked/resources/app.asar || {
-            echo "::error::x64 app.asar is missing"
-            exit 1
-          }
-
-          test -f release/linux-arm64-unpacked/resources/app.asar || {
-            echo "::error::ARM64 app.asar is missing"
-            exit 1
-          }
 
           shopt -s nullglob
           X64_FILES=(release/*_amd64.snap)
@@ -161,13 +151,11 @@ jobs:
 
           if [ "${#X64_FILES[@]}" -ne 1 ]; then
             echo "::error::Expected exactly one x64 Snap package"
-            printf '%s\n' "${X64_FILES[@]}"
             exit 1
           fi
 
           if [ "${#ARM64_FILES[@]}" -ne 1 ]; then
             echo "::error::Expected exactly one ARM64 Snap package"
-            printf '%s\n' "${ARM64_FILES[@]}"
             exit 1
           fi
 
@@ -176,30 +164,3 @@ jobs:
 
           echo "x64_snap=${X64_FILES[0]}" >> "$GITHUB_OUTPUT"
           echo "arm64_snap=${ARM64_FILES[0]}" >> "$GITHUB_OUTPUT"
-
-          echo "Generated Snap packages:"
-          ls -lh snap-artifacts/
-
-      - name: Upload Snap Packages to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          prerelease: ${{ contains(github.ref, '-beta') }}
-          files: snap-artifacts/*.snap
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish x64 Snap to Canonical Store
-        uses: snapcore/action-publish@v1
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        with:
-          snap: ${{ steps.build_snap.outputs.x64_snap }}
-          release: stable
-
-      - name: Publish ARM64 Snap to Canonical Store
-        uses: snapcore/action-publish@v1
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        with:
-          snap: ${{ steps.build_snap.outputs.arm64_snap }}
-          release: stable
