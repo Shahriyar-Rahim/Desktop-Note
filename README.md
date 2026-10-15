@@ -1,6 +1,15 @@
-# Desktop Note
+![Desktop Note icon](assets/icon.svg)
 
-Desktop Note is a lightweight, local-first desktop note-taking application built with modern JavaScript tooling. It focuses on speed, simplicity, and privacy — notes are stored locally with no account or server required. Production build artifacts and application icons are included in the repository (`build/` and `public/`).
+# Desktop-Note
+
+[![Stars](https://img.shields.io/github/stars/Shahriyar-Rahim/Desktop-Note?style=flat-square)](https://github.com/Shahriyar-Rahim/Desktop-Note/stargazers)
+[![Forks](https://img.shields.io/github/forks/Shahriyar-Rahim/Desktop-Note?style=flat-square)](https://github.com/Shahriyar-Rahim/Desktop-Note/network/members)
+[![Issues](https://img.shields.io/github/issues/Shahriyar-Rahim/Desktop-Note?style=flat-square)](https://github.com/Shahriyar-Rahim/Desktop-Note/issues)
+[![License](https://img.shields.io/github/license/Shahriyar-Rahim/Desktop-Note?style=flat-square)](https://github.com/Shahriyar-Rahim/Desktop-Note/blob/main/LICENSE)
+[![Top language](https://img.shields.io/github/languages/top/Shahriyar-Rahim/Desktop-Note?style=flat-square)](https://github.com/Shahriyar-Rahim/Desktop-Note)
+[![Last commit](https://img.shields.io/github/last-commit/Shahriyar-Rahim/Desktop-Note?style=flat-square)](https://github.com/Shahriyar-Rahim/Desktop-Note/)
+
+A simple desktop note application — quick notes on your desktop.
 
 ## Key features
 
@@ -100,4 +109,3 @@ This project is licensed under the MIT License — see the `LICENSE` file for de
 ## Maintainer
 
 Shahriyar-Rahim
-
