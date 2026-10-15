@@ -1,20 +1,31 @@
-appId: com.example.desktopnotes
+
+appId: com.no-idea.desktopnotes
 productName: Desktop Notes
 copyright: Copyright © 2026 Rahim
+
 directories:
   output: release
   buildResources: build
+
 files:
   - dist/**
   - electron/**
   - build/icon.png
   - package.json
+
 asar: true
+
 asarUnpack:
   - node_modules/better-sqlite3/**
-npmRebuild: false
+
+# Let electron-builder rebuild native dependencies for Electron.
+npmRebuild: true
 
 linux:
+  category: Office
+  icon: build/icon.png
+  maintainer: Shahriyar Rahim
+  synopsis: Local-first note taking
   target:
     - target: AppImage
       arch:
@@ -24,25 +35,22 @@ linux:
       arch:
         - x64
         - arm64
-  category: Office
-  icon: build/icon.png
-  maintainer: Rahim <rahim@example.com>
-  synopsis: Local-first note taking
 
-snap:
+snapcraft:
   base: core22
-  useTemplateApp: false
-  confinement: strict
-  plugs:
-    - default
+  core22:
+    confinement: strict
+    summary: Local-first note taking
+    stagePackages:
+      - default
 
 win:
+  icon: build/icon.png
   target:
     - target: nsis
       arch:
         - x64
         - arm64
-  icon: build/icon.png
 
 nsis:
   oneClick: false

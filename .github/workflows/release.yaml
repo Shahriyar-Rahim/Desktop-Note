@@ -1,3 +1,4 @@
+
 name: Continuous Integration & Multi-Platform Release
 
 on:
@@ -5,17 +6,24 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
-  # Job 1: Build .exe (Win), .dmg (macOS), .deb & .AppImage (Linux) for x64 & arm64
   build-multiplatform:
+    name: Build ${{ matrix.os }} installers
     runs-on: ${{ matrix.os }}
+
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-
-    permissions:
-      contents: write
+        include:
+          - os: ubuntu-22.04
+            targets: linux
+          - os: windows-latest
+            targets: windows
+          - os: macos-latest
+            targets: mac
 
     steps:
       - name: Checkout Code
@@ -25,41 +33,75 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
+          cache: npm
 
-      - name: Install System Dependencies (Linux Only)
+      - name: Install Linux System Dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libarchive-tools icnsutils graphicsmagick
+          sudo apt-get install -y \
+            libarchive-tools \
+            icnsutils \
+            graphicsmagick
 
       - name: Install Dependencies
         run: npm ci
 
-      - name: Build Web Renderer & App Installers
-        run: |
-          npm run build
-          npx electron-builder --x64 --arm64
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Web Renderer
+        run: npm run build
 
-      - name: Upload Installers to GitHub Release
+      - name: Build Linux Installers
+        if: matrix.targets == 'linux'
+        run: |
+          npx electron-builder --linux deb AppImage --x64 --publish never
+          npx electron-builder --linux deb AppImage --arm64 --publish never
+
+      - name: Build Windows Installers
+        if: matrix.targets == 'windows'
+        run: npx electron-builder --win nsis --x64 --publish never
+
+      - name: Build macOS Installers
+        if: matrix.targets == 'mac'
+        run: npx electron-builder --mac dmg --x64 --publish never
+
+      - name: Upload Linux Installers
+        if: matrix.targets == 'linux'
         uses: softprops/action-gh-release@v2
         with:
           prerelease: ${{ contains(github.ref, '-beta') }}
           files: |
             release/*.deb
-            release/*.exe
-            release/*.dmg
             release/*.AppImage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows Installers
+        if: matrix.targets == 'windows'
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ contains(github.ref, '-beta') }}
+          files: |
+            release/*.exe
             release/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Job 2: Dedicated Snap Store Publication
+      - name: Upload macOS Installers
+        if: matrix.targets == 'mac'
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ contains(github.ref, '-beta') }}
+          files: |
+            release/*.dmg
+            release/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish-snap:
+    name: Build and Publish Snap
     needs: build-multiplatform
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -68,21 +110,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
+          cache: npm
 
-      - name: Install Dependencies & Snapcraft
+      - name: Install Linux Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libarchive-tools icnsutils graphicsmagick
-          sudo snap install snapcraft --classic --channel=8.x/stable
-          sudo snap install gnome-3-28-1804 || true
-          npm ci
+          sudo apt-get install -y \
+            libarchive-tools \
+            icnsutils \
+            graphicsmagick
 
-      - name: Build Snap Package
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build and Verify Snap Packages
         id: build_snap
         shell: bash
-        env:
-          SNAPCRAFT_BUILD_ENVIRONMENT: host
         run: |
           set -euo pipefail
 
@@ -90,33 +133,69 @@ jobs:
           npm run build
 
           test -f dist/index.html || {
-            echo "ERROR: dist/index.html was not generated"
+            echo "::error::dist/index.html is missing"
             exit 1
           }
 
-          echo "Building Snap package..."
-          npx electron-builder --linux snap --x64 --arm64 --publish never
+          echo "Building Snap packages with Electron Builder..."
+          npx electron-builder --linux snap --x64 --publish never
+          npx electron-builder --linux snap --arm64 --publish never
 
-          SNAP_FILES=(release/*.snap)
+          test -f release/linux-unpacked/resources/app.asar || {
+            echo "::error::x64 app.asar is missing"
+            exit 1
+          }
 
-          if [ ! -f "${SNAP_FILES[0]:-}" ]; then
-            echo "ERROR: No Snap package was generated"
+          test -f release/linux-arm64-unpacked/resources/app.asar || {
+            echo "::error::ARM64 app.asar is missing"
+            exit 1
+          }
+
+          shopt -s nullglob
+          X64_FILES=(release/*_amd64.snap)
+          ARM64_FILES=(release/*_arm64.snap)
+
+          if [ "${#X64_FILES[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one x64 Snap package"
+            printf '%s\n' "${X64_FILES[@]}"
             exit 1
           fi
 
-          SNAP_FILE="${SNAP_FILES[0]}"
+          if [ "${#ARM64_FILES[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one ARM64 Snap package"
+            printf '%s\n' "${ARM64_FILES[@]}"
+            exit 1
+          fi
 
-          echo "Verifying Snap archive..."
-          npx asar list release/linux-unpacked/resources/app.asar \
-            | grep -Fx '/dist/index.html'
+          mkdir -p snap-artifacts
+          cp "${X64_FILES[0]}" "${ARM64_FILES[0]}" snap-artifacts/
 
-          echo "Snap package: $SNAP_FILE"
-          echo "snap_file=$SNAP_FILE" >> "$GITHUB_OUTPUT"
+          echo "x64_snap=${X64_FILES[0]}" >> "$GITHUB_OUTPUT"
+          echo "arm64_snap=${ARM64_FILES[0]}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload to Canonical Snap Store
+          echo "Generated Snap packages:"
+          ls -lh snap-artifacts/
+
+      - name: Upload Snap Packages to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ contains(github.ref, '-beta') }}
+          files: snap-artifacts/*.snap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish x64 Snap to Canonical Store
         uses: snapcore/action-publish@v1
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
         with:
-          snap: ${{ steps.build_snap.outputs.snap_file }}
+          snap: ${{ steps.build_snap.outputs.x64_snap }}
+          release: stable
+
+      - name: Publish ARM64 Snap to Canonical Store
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: ${{ steps.build_snap.outputs.arm64_snap }}
           release: stable
