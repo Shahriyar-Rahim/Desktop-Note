@@ -17,19 +17,33 @@ asarUnpack:
 npmRebuild: false
 linux:
   target:
-    - AppImage
-    - deb
+    - target: AppImage
+      arch:
+        - x64
+        - arm64
+    - target: deb
+      arch:
+        - x64
+        - arm64
   category: Office
   icon: build/icon.png
   maintainer: Rahim <rahim@example.com>
   synopsis: Local-first note taking
 win:
-  target: nsis
+  target:
+    - target: nsis
+      arch:
+        - x64
+        - arm64
   icon: build/icon.png
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
 mac:
-  target: dmg
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
   category: public.app-category.productivity
   icon: build/icon.png
