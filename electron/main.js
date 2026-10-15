@@ -119,6 +119,8 @@ function createWindow() {
     },
   });
 
+  mainWindow.setMenu(null);
+
   mainWindow.once("ready-to-show", () => mainWindow.show());
 
   // Links open in the system browser; the app window never navigates away.
