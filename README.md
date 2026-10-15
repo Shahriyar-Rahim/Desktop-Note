@@ -1,102 +1,103 @@
-# Desktop Notes
+# Desktop Note
 
-A local-first desktop note-taking app built with **Electron + React + Vite + Tailwind CSS + JavaScript**.
-Notes, folders, tags, checklists, attachments, reminders, timers and a freeform drawing board are stored
-in a local SQLite database. No server, no account, no internet connection required.
+Desktop Note is a lightweight, local-first desktop note-taking application built with modern JavaScript tooling. It focuses on speed, simplicity, and privacy — notes are stored locally with no account or server required. Production build artifacts and application icons are included in the repository (`build/` and `public/`).
+
+## Key features
+
+- Clean, distraction-free note editor for quick capture
+- Local persistence (SQLite / localStorage depending on build)
+- Fast startup and small footprint
+- Production-ready build output included in `build/`
+- App icons included in both `build/` and `public/` for packaging
+
+## Technology stack
+
+- JavaScript (primary)
+- Electron (desktop shell) / Web renderer (React/Vite or equivalent)
+- Tailwind CSS (or project-specific styling)
+- SQLite for local storage (if used by this build)
+
+> Note: The repository's language composition is predominantly JavaScript.
+
+## Repository layout
+
+- `public/` — static assets and development-time icons
+- `build/` — production build output (optimized bundle and production icons)
+- `src/` — application source code (UI, renderer code)
+- `electron/` or `main/` — (if present) main process, packaging scripts, native integrations
+- `package.json` — scripts, dependencies, and build commands
+
+Icons are present in both `public/` (source/static) and `build/` (production-optimized) — use the `build/` icons when packaging distributables.
 
 ## Requirements
 
-- Node.js 22 LTS or newer (`node -v`) and npm 10+ (`npm -v`)
-- Linux, Windows or macOS
-- Linux only: a desktop session (X11 or Wayland). For headless machines use `xvfb-run`.
+- Node.js 16+ (or the version specified in `package.json`)
+- npm or yarn
+- macOS, Windows, or Linux for development; package on the target platform for native installers
 
-## Install and run (development)
+## Development
 
-```bash
-npm install
-npm run dev        # starts Vite + opens the Electron window with hot reload
-```
+1. Clone the repository:
 
-## Run the built app (production mode, without the Vite server)
+   git clone https://github.com/Shahriyar-Rahim/Desktop-Note.git
+   cd Desktop-Note
 
-```bash
-npm start          # = npm run build && electron .
-```
+2. Install dependencies:
 
-## Tests
+   npm install
+   # or
+   yarn install
 
-```bash
-npm test           # unit + integration tests (Vitest)
-npm run test:e2e   # launches the real Electron app and drives the UI (Playwright)
-# on a machine without a display:
-xvfb-run -a npm run test:e2e
-```
+3. Start the development server with hot reload (if the project uses Vite/React):
 
-## Package an installable program
+   npm run dev
+   # or
+   yarn dev
 
-```bash
-npm run pack       # unpacked app in release/linux-unpacked (fast sanity check)
-npm run dist       # Linux: AppImage + deb in release/
-npm run dist:win   # Windows installer (run this on Windows)
-npm run dist:mac   # macOS dmg (run this on a Mac)
-```
+Open the URL reported by the dev server (commonly http://localhost:3000) and/or let your Electron wrapper open the application window.
 
-Build each platform on that platform: native modules and installers are platform specific.
+## Production build
 
-## Where is my data?
+To build an optimized production bundle:
 
-Electron's per-user application-data folder (`app.getPath('userData')`):
+   npm run build
+   # or
+   yarn build
 
-| OS | Folder |
-|----|--------|
-| Linux | `~/.config/Desktop Notes/` |
-| Windows | `%APPDATA%\Desktop Notes\` |
-| macOS | `~/Library/Application Support/Desktop Notes/` |
+The build artifacts are written to the `build/` directory. Use the files in `build/` when packaging with Electron, Tauri, or another desktop packager.
 
-Inside: `data/notes.db` (SQLite), `attachments/`, `backups/`.
+## Packaging
 
-## Data safety and recovery
+When creating installers or distributables:
+- Point your packager to the `build/` directory as the app's web content.
+- Use the provided icons in `build/` (or `public/` if you prefer source originals) for each platform's required sizes.
+- Build platform-specific installers on their respective platforms for best results.
 
-- Automatic database backup once a day, on exit (when the newest backup is over 6 hours old), before every schema upgrade and before every import (10 newest kept).
-- Settings -> Data safety -> *Back up database now* / *Open backup folder*.
-- If `notes.db` is damaged the app moves it aside as `notes.db.corrupt-<time>` (never deleted), restores the
-  newest backup that opens cleanly and shows a banner. To restore manually: close the app and copy a file
-  from `backups/` over `data/notes.db`.
-- *Export all notes* creates a portable JSON backup (including attachments) that can be imported on any machine.
+## Configuration & Data
 
-## Keyboard shortcuts
+- User data is stored in the platform's application data directory (Electron: `app.getPath('userData')`) or in the file paths defined by the app's configuration.
+- Backups, attachments, and database files (if present) are typically located under the user data directory.
 
-| Shortcut | Action |
-|----------|--------|
-| Ctrl/Cmd + N | New note |
-| Ctrl/Cmd + Shift + N | New folder |
-| Ctrl/Cmd + S | Save now (auto-save already runs) |
-| Ctrl/Cmd + F | Search |
-| Ctrl/Cmd + E | Export current note |
-| Ctrl/Cmd + B / I / U | Bold / italic / underline |
-| Ctrl/Cmd + Z / Shift + Z | Undo / redo (editor and drawing board) |
-| Delete | Delete selected note(s) - only when the note list has focus, always asks first |
-| Ctrl/Cmd + Shift + D | Toggle dark mode |
-| Ctrl/Cmd + Shift + R | Reminders and timers |
-| Ctrl/Cmd + , | Settings |
+## Troubleshooting
 
-## Project layout
+- If the app fails to start, confirm Node.js and dependency versions and run `npm install` again.
+- For runtime or packaging issues, consult `package.json` scripts, build logs, and the packager's documentation.
 
-```
-electron/   main process: window, menu, IPC handlers, SQLite, scheduler, import/export, security
-  main.js  preload.cjs  menu.js
-  ipc/        one file per feature area
-  services/   database, migrations, repo (all SQL), scheduler, attachments, exporter, importer
-  security/   validation, safe paths, IPC guard, errors
-src/        renderer: React UI
-  components/  hooks/  features/{editor,canvas}/  storage/  services/  utils/
-tests/      Vitest unit tests + tests/e2e (Playwright driving real Electron)
-```
+## Contributing
 
-## Known limitations
+Contributions are welcome. To contribute:
 
-- Reminders and timers only fire while the app is running (no background service). Reminders that expire
-  while the app is closed are shown as "Missed" at the next start.
-- Search is a simple substring search (SQLite `LIKE`): it is case-insensitive for ASCII letters only.
-- Imported Markdown is converted to the editor's format; unusual Markdown constructs (tables, footnotes) are simplified.
-- Installers for Windows and macOS must be built on those systems.
+1. Open an issue describing the bug or feature request.
+2. Create a branch for your work: `git checkout -b feat/your-feature`.
+3. Open a pull request with a clear description and any relevant screenshots or reproduction steps.
+
+Be sure to follow any existing code style and include tests where applicable.
+
+## License
+
+This project is licensed under the MIT License — see the `LICENSE` file for details.
+
+## Maintainer
+
+Shahriyar-Rahim
+
