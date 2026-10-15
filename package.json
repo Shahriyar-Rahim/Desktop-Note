@@ -1,10 +1,11 @@
 {
   "name": "desktop-notes",
   "productName": "Desktop Notes",
+  "desktopName": "desktop-notes.desktop",
   "version": "1.0.0",
   "description": "A local-first desktop note-taking app built with Electron, React, Vite and Tailwind CSS.",
-  "homepage": "https://example.com/desktop-notes",
-  "author": "Rahim <rahim@example.com>",
+  "homepage": "https://store.no-idea.top/",
+  "author": "Rahim rahimislam420.ri35@gmail.com",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -18,7 +19,7 @@
     "test:watch": "vitest",
     "test:e2e": "npm run build && node tests/e2e/smoke.mjs",
     "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder -wml --x64 --arm64",
+    "dist": "npm run build && electron-builder --linux AppImage deb --x64 --arm64",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
@@ -50,5 +51,9 @@
     "vite": "^8.3.4",
     "vitest": "^5.0.3",
     "wait-on": "^9.5.1"
+  },
+  "allowScripts": {
+    "better-sqlite3@13.0.3": true,
+    "electron-winstaller@5.4.0": true
   }
 }

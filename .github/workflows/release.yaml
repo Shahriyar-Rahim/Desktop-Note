@@ -1,0 +1,119 @@
+name: Continuous Integration & Multi-Platform Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  # Job 1: Build .exe (Win), .dmg (macOS), .deb & .AppImage (Linux) for x64 & arm64
+  build-multiplatform:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install System Dependencies (Linux Only)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools icnsutils graphicsmagick
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Web Renderer & App Installers
+        run: |
+          npm run build
+          npx electron-builder --x64 --arm64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Installers to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ contains(github.ref, '-beta') }}
+          files: |
+            release/*.deb
+            release/*.exe
+            release/*.dmg
+            release/*.AppImage
+            release/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Job 2: Dedicated Snap Store Publication
+  publish-snap:
+    needs: build-multiplatform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies & Snapcraft
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools icnsutils graphicsmagick
+          sudo snap install snapcraft --classic
+          npm ci
+
+      - name: Build Snap Package
+        id: build_snap
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Building frontend..."
+          npm run build
+
+          test -f dist/index.html || {
+            echo "ERROR: dist/index.html was not generated"
+            exit 1
+          }
+
+          echo "Building Snap package..."
+          npx electron-builder --linux snap --x64 --arm64 --publish never
+
+          SNAP_FILES=(release/*.snap)
+
+          if [ ! -f "${SNAP_FILES[0]:-}" ]; then
+            echo "ERROR: No Snap package was generated"
+            exit 1
+          fi
+
+          SNAP_FILE="${SNAP_FILES[0]}"
+
+          echo "Verifying Snap archive..."
+          npx asar list release/linux-unpacked/resources/app.asar \
+            | grep -Fx '/dist/index.html'
+
+          echo "Snap package: $SNAP_FILE"
+          echo "snap_file=$SNAP_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to Canonical Snap Store
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: ${{ steps.build_snap.outputs.snap_file }}
+          release: stable
