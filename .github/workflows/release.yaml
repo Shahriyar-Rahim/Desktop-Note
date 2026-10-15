@@ -75,6 +75,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libarchive-tools icnsutils graphicsmagick
           sudo snap install snapcraft --classic --channel=8.x/stable
+          sudo snap install gnome-3-28-1804 || true
           npm ci
 
       - name: Build Snap Package

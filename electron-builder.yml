@@ -30,6 +30,7 @@ linux:
   synopsis: Local-first note taking
 
 snap:
+  base: core22
   useTemplateApp: false
   confinement: strict
   plugs:
