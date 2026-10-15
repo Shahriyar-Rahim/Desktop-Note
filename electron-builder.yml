@@ -12,9 +12,8 @@ files:
 asar: true
 asarUnpack:
   - node_modules/better-sqlite3/**
-# better-sqlite3 v13 ships N-API prebuilt binaries that work with Electron,
-# so no native rebuild step is needed.
 npmRebuild: false
+
 linux:
   target:
     - target: AppImage
@@ -29,11 +28,13 @@ linux:
   icon: build/icon.png
   maintainer: Rahim <rahim@example.com>
   synopsis: Local-first note taking
-snapcraft:
+
+snap:
   useTemplateApp: false
   confinement: strict
   plugs:
     - default
+
 win:
   target:
     - target: nsis
@@ -41,9 +42,11 @@ win:
         - x64
         - arm64
   icon: build/icon.png
+
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+
 mac:
   target:
     - target: dmg
