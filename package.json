@@ -20,7 +20,8 @@
     "test:e2e": "npm run build && node tests/e2e/smoke.mjs",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder --linux AppImage deb --x64 --arm64",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "release": "git add . && git commit -m \"Update release\" && git push origin main && (git tag -d v1.0.0 || true) && (git push origin --delete v1.0.0 || true) && git tag v1.0.0 && git push origin v1.0.0"
   },
   "dependencies": {
     "@tiptap/core": "^3.31.4",
