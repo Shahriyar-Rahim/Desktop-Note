@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <title>Desktop Note icon</title>
+  <rect x="6" y="10" width="108" height="100" rx="8" ry="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="3"/>
+  <rect x="18" y="24" width="84" height="8" rx="4" ry="4" fill="#ffffff"/>
+  <rect x="18" y="40" width="84" height="8" rx="4" ry="4" fill="#ffffff"/>
+  <rect x="18" y="56" width="84" height="8" rx="4" ry="4" fill="#ffffff"/>
+  <rect x="18" y="72" width="48" height="8" rx="4" ry="4" fill="#ffffff"/>
+  <circle cx="92" cy="86" r="10" fill="#ef4444"/>
+  <path d="M88 82 L96 90" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+  <path d="M96 82 L88 90" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+</svg>
