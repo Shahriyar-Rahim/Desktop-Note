@@ -80,6 +80,8 @@ jobs:
       - name: Build Snap Package
         id: build_snap
         shell: bash
+        env:
+          SNAPCRAFT_BUILD_ENVIRONMENT: host
         run: |
           set -euo pipefail
 
