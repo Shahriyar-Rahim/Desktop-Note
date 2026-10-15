@@ -29,6 +29,17 @@ linux:
   icon: build/icon.png
   maintainer: Rahim <rahim@example.com>
   synopsis: Local-first note taking
+snap:
+  useTemplateApp: false
+  confinement: strict
+  plugs:
+    - default
+    - desktop
+    - desktop-legacy
+    - x11
+    - wayland
+    - network
+    - gsettings
 win:
   target:
     - target: nsis
