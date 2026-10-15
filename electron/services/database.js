@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
-import { migrate, LATEST_VERSION } from "./migrations";
+import { migrate, LATEST_VERSION } from "./migrations.js";
 
 const stamp = (d = new Date()) => d.toISOString().replace(/[:.]/g, "-");
 
