@@ -36,10 +36,8 @@ linux:
     - target: snap
       arch:
         - x64
-        - arm64
 
 snap:
-  base: core22
   useTemplateApp: true
   confinement: strict
   grade: stable
