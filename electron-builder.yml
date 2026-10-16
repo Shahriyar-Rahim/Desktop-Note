@@ -19,6 +19,7 @@ asarUnpack:
 
 npmRebuild: true
 
+# Linux Configuration
 linux:
   category: Office
   icon: build/icon.png
@@ -37,19 +38,15 @@ linux:
       arch:
         - x64
 
+# Snap Configuration
 snap:
+  base: core22
   useTemplateApp: true
   confinement: strict
   grade: stable
   summary: Local-first note taking
-  plugs:
-    - default
-    - desktop
-    - desktop-legacy
-    - home
-    - x11
-    - wayland
 
+# Windows Configuration
 win:
   icon: build/icon.png
   target:
@@ -62,6 +59,7 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
 
+# macOS Configuration
 mac:
   target:
     - target: dmg
