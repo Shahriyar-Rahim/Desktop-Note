@@ -19,7 +19,6 @@ asarUnpack:
 
 npmRebuild: true
 
-# Linux Configuration
 linux:
   category: Office
   icon: build/icon.png
@@ -40,8 +39,8 @@ linux:
         - arm64
 
 snap:
+  base: core22
   useTemplateApp: true
-  publish: null
   confinement: strict
   grade: stable
   summary: Local-first note taking
@@ -53,7 +52,6 @@ snap:
     - x11
     - wayland
 
-# Windows Configuration
 win:
   icon: build/icon.png
   target:
@@ -65,25 +63,12 @@ win:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-  createDesktopShortcut: true
-  createStartMenuShortcut: true
-  shortcutName: Desktop Notes
 
-# macOS Configuration
 mac:
-  category: public.app-category.productivity
-  icon: build/icon.png
   target:
     - target: dmg
       arch:
         - x64
         - arm64
-
-dmg:
-  contents:
-    - x: 130
-      y: 220
-    - x: 410
-      y: 220
-      type: link
-      path: /Applications
+  category: public.app-category.productivity
+  icon: build/icon.png
