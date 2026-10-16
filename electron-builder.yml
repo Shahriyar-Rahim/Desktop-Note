@@ -1,4 +1,3 @@
-
 appId: com.no-idea.desktopnotes
 productName: Desktop Notes
 copyright: Copyright © 2026 Rahim
@@ -18,7 +17,6 @@ asar: true
 asarUnpack:
   - node_modules/better-sqlite3/**
 
-# Let electron-builder rebuild native dependencies for Electron.
 npmRebuild: true
 
 linux:
@@ -35,14 +33,16 @@ linux:
       arch:
         - x64
         - arm64
+    - target: snap
+      arch:
+        - x64
+        - arm64
 
-snapcraft:
-  base: core22
-  core22:
-    confinement: strict
-    summary: Local-first note taking
-    stagePackages:
-      - default
+snap:
+  confinement: strict
+  grade: stable
+  summary: Local-first note taking
+  useTemplateApp: false
 
 win:
   icon: build/icon.png

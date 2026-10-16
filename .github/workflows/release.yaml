@@ -52,16 +52,15 @@ jobs:
       - name: Build Linux Installers
         if: matrix.targets == 'linux'
         run: |
-          npx electron-builder --linux deb AppImage --x64 --publish never
-          npx electron-builder --linux deb AppImage --arm64 --publish never
+          npx electron-builder --linux deb AppImage --x64 --arm64 --publish never
 
       - name: Build Windows Installers
         if: matrix.targets == 'windows'
-        run: npx electron-builder --win nsis --x64 --publish never
+        run: npx electron-builder --win nsis --x64 --arm64 --publish never
 
       - name: Build macOS Installers
         if: matrix.targets == 'mac'
-        run: npx electron-builder --mac dmg --x64 --publish never
+        run: npx electron-builder --mac dmg --x64 --arm64 --publish never
 
       - name: Upload Linux Installers
         if: matrix.targets == 'linux'
@@ -125,7 +124,6 @@ jobs:
             binfmt-support
           sudo snap install snapcraft --classic --channel=8.x/stable
           echo "/snap/bin" >> $GITHUB_PATH
-          sudo snap install gnome-3-28-1804 || true
 
       - name: Install Dependencies
         run: npm ci
@@ -133,8 +131,6 @@ jobs:
       - name: Build and Verify Snap Packages
         id: build_snap
         shell: bash
-        env:
-          SNAPCRAFT_BUILD_ENVIRONMENT: host
         run: |
           set -euo pipefail
 
@@ -142,8 +138,7 @@ jobs:
           npm run build
 
           echo "Building Snap packages with Electron Builder..."
-          npx electron-builder --linux snap --x64 --publish never
-          npx electron-builder --linux snap --arm64 --publish never
+          npx electron-builder --linux snap --x64 --arm64 --publish never
 
           shopt -s nullglob
           X64_FILES=(release/*_amd64.snap)
@@ -164,3 +159,11 @@ jobs:
 
           echo "x64_snap=${X64_FILES[0]}" >> "$GITHUB_OUTPUT"
           echo "arm64_snap=${ARM64_FILES[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Snap Installers to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ contains(github.ref, '-beta') }}
+          files: snap-artifacts/*.snap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
