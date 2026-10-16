@@ -38,8 +38,8 @@ linux:
         - x64
         - arm64
 
+# Forces electron-builder to use native template packaging instead of calling `snapcraft snap`
 snap:
-  base: core22
   useTemplateApp: true
   confinement: strict
   grade: stable
