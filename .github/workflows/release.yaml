@@ -126,7 +126,6 @@ jobs:
         id: build_snap
         shell: bash
         env:
-          # Forces snapcraft (if invoked) to run on host without Multipass or LXD containers
           SNAPCRAFT_BUILD_ENVIRONMENT: host
         run: |
           set -euo pipefail
