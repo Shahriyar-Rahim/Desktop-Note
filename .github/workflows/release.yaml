@@ -95,73 +95,73 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-          publish-snap:
-            name: Build and Publish Snap
-            needs: build-multiplatform
-            runs-on: ubuntu-22.04
-        
-            steps:
-              - name: Checkout Code
-                uses: actions/checkout@v4
-        
-              - name: Setup Node.js
-                uses: actions/setup-node@v4
-                with:
-                  node-version: 22
-                  cache: npm
-        
-              - name: Install Linux Dependencies & Snapcraft
-                run: |
-                  sudo apt-get update
-                  sudo apt-get install -y \
-                    libarchive-tools \
-                    icnsutils \
-                    graphicsmagick \
-                    squashfs-tools
-                  sudo snap install snapcraft --classic
-                  echo "/snap/bin" >> $GITHUB_PATH
-        
-              - name: Install Dependencies
-                run: npm ci
-        
-              - name: Build and Verify Snap Packages
-                id: build_snap
-                shell: bash
-                env:
-                  SNAPCRAFT_BUILD_ENVIRONMENT: host
-                run: |
-                  set -euo pipefail
-        
-                  echo "Building frontend..."
-                  npm run build
-        
-                  echo "Building Snap packages with Electron Builder..."
-                  npx electron-builder --linux snap --x64 --arm64 --publish never
-        
-                  shopt -s nullglob
-                  X64_FILES=(release/*_amd64.snap)
-                  ARM64_FILES=(release/*_arm64.snap)
-        
-                  if [ "${#X64_FILES[@]}" -ne 1 ]; then
-                    echo "::error::Expected exactly one x64 Snap package"
-                    exit 1
-                  fi
-        
-                  if [ "${#ARM64_FILES[@]}" -ne 1 ]; then
-                    echo "::error::Expected exactly one ARM64 Snap package"
-                    exit 1
-                  fi
-        
-                  mkdir -p snap-artifacts
-                  cp "${X64_FILES[0]}" "${ARM64_FILES[0]}" snap-artifacts/
-        
-                  echo "x64_snap=${X64_FILES[0]}" >> "$GITHUB_OUTPUT"
-                  echo "arm64_snap=${ARM64_FILES[0]}" >> "$GITHUB_OUTPUT"
-        
-              - name: Upload Snap Installers to Release
-                uses: softprops/action-gh-release@v2
-                with:
-                  prerelease: ${{ contains(github.ref, '-beta') }}
-                  files: snap-artifacts/*.snap
-                env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  publish-snap:
+    name: Build and Publish Snap
+    needs: build-multiplatform
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Linux Dependencies & Snapcraft
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libarchive-tools \
+            icnsutils \
+            graphicsmagick \
+            squashfs-tools
+          sudo snap install snapcraft --classic
+          echo "/snap/bin" >> $GITHUB_PATH
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build and Verify Snap Packages
+        id: build_snap
+        shell: bash
+        env:
+          SNAPCRAFT_BUILD_ENVIRONMENT: host
+        run: |
+          set -euo pipefail
+
+          echo "Building frontend..."
+          npm run build
+
+          echo "Building Snap packages with Electron Builder..."
+          npx electron-builder --linux snap --x64 --arm64 --publish never
+
+          shopt -s nullglob
+          X64_FILES=(release/*_amd64.snap)
+          ARM64_FILES=(release/*_arm64.snap)
+
+          if [ "${#X64_FILES[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one x64 Snap package"
+            exit 1
+          fi
+
+          if [ "${#ARM64_FILES[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one ARM64 Snap package"
+            exit 1
+          fi
+
+          mkdir -p snap-artifacts
+          cp "${X64_FILES[0]}" "${ARM64_FILES[0]}" snap-artifacts/
+
+          echo "x64_snap=${X64_FILES[0]}" >> "$GITHUB_OUTPUT"
+          echo "arm64_snap=${ARM64_FILES[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Snap Installers to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ contains(github.ref, '-beta') }}
+          files: snap-artifacts/*.snap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
