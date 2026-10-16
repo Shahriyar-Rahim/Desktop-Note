@@ -147,10 +147,18 @@ jobs:
 
           echo "x64_snap=${X64_FILES[0]}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload Snap Installers to Release
+      - name: Upload Snap Installers to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           prerelease: ${{ contains(github.ref, '-beta') }}
           files: snap-artifacts/*.snap
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to Canonical Snap Store
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: snap-artifacts/*.snap
+          release: ${{ contains(github.ref, '-beta') && 'beta' || 'stable' }}
