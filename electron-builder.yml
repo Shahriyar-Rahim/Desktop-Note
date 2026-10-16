@@ -38,11 +38,22 @@ linux:
         - x64
         - arm64
 
+# Modern Snapcraft configuration block (resolves deprecation warning)
+snapcraft:
+  plugs:
+    - default
+    - desktop
+    - desktop-legacy
+    - home
+    - x11
+    - wayland
+  summary: Local-first note taking
+
+# Configures electron-builder to use native snap template instead of invoking Snapcraft/Multipass
 snap:
+  useTemplateApp: true
   confinement: strict
   grade: stable
-  summary: Local-first note taking
-  useTemplateApp: false
 
 win:
   icon: build/icon.png

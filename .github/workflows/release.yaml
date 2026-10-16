@@ -110,20 +110,14 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Set up QEMU for ARM64 Cross-Compilation
-        uses: docker/setup-qemu-action@v3
-
-      - name: Install Linux Dependencies & Snapcraft
+      - name: Install Linux Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             libarchive-tools \
             icnsutils \
             graphicsmagick \
-            qemu-user-static \
-            binfmt-support
-          sudo snap install snapcraft --classic --channel=8.x/stable
-          echo "/snap/bin" >> $GITHUB_PATH
+            squashfs-tools
 
       - name: Install Dependencies
         run: npm ci
@@ -131,6 +125,9 @@ jobs:
       - name: Build and Verify Snap Packages
         id: build_snap
         shell: bash
+        env:
+          # Forces snapcraft (if invoked) to run on host without Multipass or LXD containers
+          SNAPCRAFT_BUILD_ENVIRONMENT: host
         run: |
           set -euo pipefail
 
