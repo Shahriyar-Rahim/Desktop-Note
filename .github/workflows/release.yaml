@@ -110,7 +110,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install Linux Dependencies & Snapcraft
+      - name: Install System Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -118,8 +118,6 @@ jobs:
             icnsutils \
             graphicsmagick \
             squashfs-tools
-          sudo snap install snapcraft --classic
-          echo "/snap/bin" >> $GITHUB_PATH
 
       - name: Install Dependencies
         run: npm ci
@@ -127,8 +125,6 @@ jobs:
       - name: Build and Verify Snap Packages
         id: build_snap
         shell: bash
-        env:
-          SNAPCRAFT_BUILD_ENVIRONMENT: host
         run: |
           set -euo pipefail
 
